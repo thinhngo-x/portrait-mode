@@ -146,7 +146,7 @@ def get_mask(prediction,
         )
         if area_i > max_area:
             max_area = area_i
-            main_idx = root
+            main_idx = idx_person[root]
 
     # Merge masks of objects overlapping on persons
     idx_obj = torch.arange(num_objs)[prediction['labels'] != 1]
