@@ -21,6 +21,31 @@ def parse_arg():
     return args
 
 
+class UnionFind:
+    """Union-find data structure."""
+
+    def __init__(self, n_vertices):
+        """Initialize."""
+        self.parent = [*range(n_vertices)]
+
+    def find(self, id_v):
+        """Find current root of a vertex whose index is id_v."""
+        while self.parent[id_v] != id_v:
+            id_v = self.parent[id_v]
+        return id_v
+
+    def union(self, id1, id2):
+        """Unite two vertives whose indices are id1 and id2.
+
+        @returns (int, int) root of vertex id1, root of vertex id2
+                            before union.
+        """
+        root2 = self.find(id2)
+        root1 = self.find(id1)
+        self.parent[root1] = root2
+        return root1, root2
+
+
 def load_model(download=True):
     """Load pretrained Mask R-CNN model with a Resnet50 as backbone."""
     print("Loading model...")
@@ -82,47 +107,59 @@ def merge_masks(m1, m2):
 
 
 def get_mask(prediction,
-             thres_merge_per=0.05, thres_merge_obj=0.05, thres=0.1):
+             thres_merge_per=0.1, thres_merge_obj=0.1, thres=0.1):
     """Merge or select masks for the bokeh effect."""
     num_objs = prediction['labels'].shape[0]
     # print(prediction['labels'] == 1)
 
     # Merge mask of crowds
-    idx_person = torch.arange(num_objs)[prediction['labels'] == 1]
+    idx_person = torch.arange(num_objs)[np.logical_and(
+        prediction['labels'] == 1, prediction['scores'] > 0.8)]
     # print(idx_person)
-    cur_idx = idx_person[0]
-    cur_area = torch.sum(prediction['masks'][cur_idx, 0] > thres)
 
-    for i in range(1, len(idx_person)):
-        iou, inter, union = IoU(prediction, cur_idx, idx_person[i])
-        # print(iou)
-        if iou > thres_merge_per:
-            # Then merge two masks
-            prediction['masks'][cur_idx, 0] = merge_masks(
-                prediction['masks'][cur_idx, 0],
-                prediction['masks'][idx_person[i], 0]
-            )
-            prediction['boxes'][cur_idx, :] = union
-            cur_area = torch.sum(prediction['masks'][cur_idx, 0] > thres)
-        else:
-            # Compare areas between masks and pick the mask with larger area
-            area_i = torch.sum(prediction['masks'][idx_person[i], 0] > thres)
-            if area_i > cur_area:
-                cur_area = area_i
-                cur_idx = i
+    uf = UnionFind(len(idx_person))
+
+    for j in range(len(idx_person)):
+        for i in range(j+1, len(idx_person)):
+            iou, inter, union = IoU(prediction, idx_person[i], idx_person[j])
+            if iou > thres_merge_per:
+                # Then make edge, unite and merge two masks
+                root_i, root_j = uf.union(i, j)
+                prediction['masks'][idx_person[root_j], 0] = merge_masks(
+                    prediction['masks'][idx_person[root_i], 0],
+                    prediction['masks'][idx_person[root_j], 0]
+                )
+    # Select main group of person-masks
+    max_area = 0
+    main_idx = -1
+    # Center region: (x_min, y_min, x_max, y_max)
+    h, w = prediction['masks'][0, 0].shape
+    x_min = w // 6
+    x_max = w - w // 6
+    y_min = h // 6
+    y_max = h - h // 6
+    for i in range(len(idx_person)):
+        root = uf.find(i)
+        area_i = torch.sum(
+            prediction['masks'][idx_person[root], 0, y_min:y_max, x_min:x_max]
+            > 0
+        )
+        if area_i > max_area:
+            max_area = area_i
+            main_idx = root
 
     # Merge masks of objects overlapping on persons
     idx_obj = torch.arange(num_objs)[prediction['labels'] != 1]
     for i in range(len(idx_obj)):
         # If the object lies inside the mask of person, merge them
-        iou = IoU_mask(prediction, cur_idx, idx_obj[i], thres)
+        iou = IoU_mask(prediction, main_idx, idx_obj[i], thres)
         if iou > thres_merge_obj:
-            prediction['masks'][cur_idx, 0] = merge_masks(
-                prediction['masks'][cur_idx, 0],
+            prediction['masks'][main, 0] = merge_masks(
+                prediction['masks'][main_idx, 0],
                 prediction['masks'][idx_obj[i], 0]
             )
 
-    return prediction['masks'][cur_idx, 0]
+    return prediction['masks'][main_idx, 0]
 
 
 def apply_blur(image, prediction, thres):
