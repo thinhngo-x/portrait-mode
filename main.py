@@ -28,6 +28,7 @@ def load_model(download=True):
         pretrained=download, pretrained_backbone=download
     )
     if not download:
+        print("Downloading model...")
         model.load_state_dict(torch.load(os.path.join(
             'model', 'maskrcnn_resnet50_fpn.ptn')))
     else:
