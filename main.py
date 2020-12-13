@@ -170,6 +170,9 @@ if __name__ == "__main__":
         model = load_model(download=True).to(device)
     model.eval()
 
+    if not os.path.exists('output'):
+        os.makedirs('output')
+
     if os.path.isfile(args['input_path']):
         img = Image.open(args['input_path'])
         img_np = np.array(img, dtype=np.uint8)[:, :, ::-1]
