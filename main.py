@@ -159,6 +159,9 @@ if __name__ == "__main__":
         device = torch.device('cpu')
     print(device)
 
+    if not os.path.exists('model'):
+        os.makedirs('model')
+
     if len(os.listdir('model')) > 0:
         model = load_model(download=False).to(device)
     else:
