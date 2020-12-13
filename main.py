@@ -107,14 +107,15 @@ def merge_masks(m1, m2):
 
 
 def get_mask(prediction,
-             thres_merge_per=0.1, thres_merge_obj=0.1, thres=0.1):
+             thres_merge_per=0.1, thres_merge_obj=0.1,
+             thres=0.1, thres_score=0.7):
     """Merge or select masks for the bokeh effect."""
     num_objs = prediction['labels'].shape[0]
     # print(prediction['labels'] == 1)
 
     # Merge mask of crowds
     idx_person = torch.arange(num_objs)[torch.logical_and(
-        prediction['labels'] == 1, prediction['scores'] > 0.8)]
+        prediction['labels'] == 1, prediction['scores'] > thres_score)]
     # print(idx_person)
 
     uf = UnionFind(len(idx_person))
@@ -162,10 +163,14 @@ def get_mask(prediction,
     return prediction['masks'][main_idx, 0]
 
 
-def apply_blur(image, prediction, thres):
-    """Synthesize image with bokeh effect."""
+def apply_blur(image, prediction, thres, degree=1/40):
+    """Synthesize image with bokeh effect.
+
+    @param degree (int) [0, 1]
+           The larger it is, the more blurred the background
+    """
     h, w = image.shape[0:2]
-    ksize = min(h, w) // 50
+    ksize = min(h, w) // (1/degree).int()
     if ksize % 2 == 0:
         ksize += 1
 
