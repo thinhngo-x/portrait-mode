@@ -35,5 +35,6 @@ In the end of the process, you should find all the ouput images in folder `outpu
 ## Execute on your own input
 
 Execute the script with 2 optional arguments:
-	* `--input_path`: (String) Path to your input, either an image file or a folder of images
-	* `--gpu`: (Boolean) Whether to use GPU or not.
+
+*  `--input_path`: (String) Path to your input, either an image file or a folder of images
+*  `--gpu`: (Boolean) Whether to use GPU or not.
