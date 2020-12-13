@@ -154,7 +154,7 @@ def get_mask(prediction,
         # If the object lies inside the mask of person, merge them
         iou = IoU_mask(prediction, main_idx, idx_obj[i], thres)
         if iou > thres_merge_obj:
-            prediction['masks'][main, 0] = merge_masks(
+            prediction['masks'][main_idx, 0] = merge_masks(
                 prediction['masks'][main_idx, 0],
                 prediction['masks'][idx_obj[i], 0]
             )
