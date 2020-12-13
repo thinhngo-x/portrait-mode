@@ -107,7 +107,7 @@ def merge_masks(m1, m2):
 
 
 def get_mask(prediction,
-             thres_merge_per=0.1, thres_merge_obj=0.1,
+             thres_merge_per=0, thres_merge_obj=0.1,
              thres=0.1, thres_score=0.7):
     """Merge or select masks for the bokeh effect."""
     num_objs = prediction['labels'].shape[0]
