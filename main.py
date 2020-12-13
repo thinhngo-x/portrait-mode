@@ -170,7 +170,7 @@ def apply_blur(image, prediction, thres, degree=1/40):
            The larger it is, the more blurred the background
     """
     h, w = image.shape[0:2]
-    ksize = min(h, w) // (1/degree).int()
+    ksize = min(h, w) // int((1/degree))
     if ksize % 2 == 0:
         ksize += 1
 
