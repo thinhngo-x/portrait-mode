@@ -113,7 +113,7 @@ def get_mask(prediction,
     # print(prediction['labels'] == 1)
 
     # Merge mask of crowds
-    idx_person = torch.arange(num_objs)[np.logical_and(
+    idx_person = torch.arange(num_objs)[torch.logical_and(
         prediction['labels'] == 1, prediction['scores'] > 0.8)]
     # print(idx_person)
 
