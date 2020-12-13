@@ -24,11 +24,12 @@ def parse_arg():
 def load_model(download=True):
     """Load pretrained Mask R-CNN model with a Resnet50 as backbone."""
     print("Loading model...")
+    if download:
+        print("Downloading model...")
     model = torchvision.models.detection.maskrcnn_resnet50_fpn(
         pretrained=download, pretrained_backbone=download
     )
     if not download:
-        print("Downloading model...")
         model.load_state_dict(torch.load(os.path.join(
             'model', 'maskrcnn_resnet50_fpn.ptn')))
     else:
