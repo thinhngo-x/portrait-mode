@@ -163,29 +163,51 @@ def get_mask(prediction,
     return prediction['masks'][main_idx, 0]
 
 
-def apply_blur(image, prediction, thres, degree=1/40):
+def disc_shaped_kernel(ksize):
+    """Return an average disc-shape kernel."""
+    k = ksize // 2
+    x, y = np.ogrid[-k:k+1, -k:k+1]
+    mask = x**2 + y**2 <= k**2
+    kernel = np.zeros((ksize, ksize), dtype=np.float32)
+    kernel[mask] = 1.0
+    kernel = kernel / np.sum(mask)
+    return kernel
+
+
+def apply_blur(image, prediction, thres, degree=1/40, gamma=0.15):
     """Synthesize image with bokeh effect.
 
     @param degree (int) [0, 1]
            The larger it is, the more blurred the background
     """
     h, w = image.shape[0:2]
-    ksize = min(h, w) // int((1/degree))
+    ksize = int(min(h, w) * degree)
     if ksize % 2 == 0:
         ksize += 1
 
     mask = get_mask(prediction, thres=thres).detach().cpu().numpy()
     mask[mask > thres] = 1.0
     mask[mask < thres] = 0.0
-    mask = cv2.erode(mask, np.ones((ksize//2, ksize//2), dtype=np.uint8))
+    mask = cv2.erode(mask, np.ones((ksize//4, ksize//4), dtype=np.uint8))
     closing = cv2.morphologyEx(
         mask, cv2.MORPH_CLOSE, np.ones((ksize, ksize), dtype=np.uint8))
     mask = cv2.GaussianBlur(mask, (ksize, ksize), 0)
-    # print(np.unique(mask))
-    mask = np.expand_dims(mask, 2)
+
+    # Bokeh effect on the whole image
+    kernel = disc_shaped_kernel(ksize)
+
+    # Get image gamma-corrected and apply disc-shape blur to get an
+    # image with bokeh effect
+    gamma_correction = ((image / 255.0) ** (1 / gamma)) * 255
+    bokeh = cv2.filter2D(gamma_correction.astype(np.uint8), 3, kernel)
+    bokeh = (((bokeh / 255.0) ** gamma) * 255).astype(np.uint8)
+    # Keep only pixels with high value from bokeh image
     blurred = cv2.GaussianBlur(image, (ksize, ksize), 0)
-    # print(mask)
-    image = image * mask + blurred * (1 - mask)
+    bokeh = cv2.max(bokeh, blurred)
+
+    # Blend
+    mask = np.expand_dims(mask, 2)
+    image = image * mask + bokeh * (1 - mask)
     return image.astype(np.uint8)
 
 
@@ -218,8 +240,8 @@ if __name__ == "__main__":
     if os.path.isfile(args['input_path']):
         img = Image.open(args['input_path'])
         img_np = np.array(img, dtype=np.uint8)[:, :, ::-1]
-        cv2.imshow("Original image", img_np)
-        cv2.waitKey()
+        # cv2.imshow("Original image", img_np)
+        # cv2.waitKey()
         img = torchvision.transforms.functional.to_tensor(img)
 
         # Predict masks
@@ -227,8 +249,8 @@ if __name__ == "__main__":
             predictions = model([img.to(device)])
 
         out = apply_blur(img_np, predictions[0], thres=0.4)
-        cv2.imshow("Image with Bokeh effect", out)
-        cv2.waitKey()
+        # cv2.imshow("Image with Bokeh effect", out)
+        # cv2.waitKey()
 
         cv2.imwrite(
             os.path.join('output', os.path.split(args['input_path'])[-1]),
