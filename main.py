@@ -188,7 +188,7 @@ def apply_blur(image, prediction, thres, degree=1/40, gamma=0.15):
     mask = get_mask(prediction, thres=thres).detach().cpu().numpy()
     mask[mask > thres] = 1.0
     mask[mask < thres] = 0.0
-    mask = cv2.erode(mask, np.ones((ksize//4, ksize//4), dtype=np.uint8))
+    mask = cv2.erode(mask, np.ones((ksize//2, ksize//2), dtype=np.uint8))
     closing = cv2.morphologyEx(
         mask, cv2.MORPH_CLOSE, np.ones((ksize, ksize), dtype=np.uint8))
     mask = cv2.GaussianBlur(mask, (ksize, ksize), 0)
