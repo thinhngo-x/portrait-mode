@@ -107,7 +107,7 @@ def merge_masks(m1, m2):
 
 
 def get_mask(prediction,
-             thres_merge_per=0, thres_merge_obj=0.1,
+             thres_merge_per=0, thres_merge_obj=0.01,
              thres=0.1, thres_score=0.7):
     """Merge or select masks for the bokeh effect."""
     num_objs = prediction['labels'].shape[0]
@@ -152,7 +152,6 @@ def get_mask(prediction,
     # Merge masks of objects overlapping on persons
     idx_obj = torch.arange(num_objs)[prediction['labels'] != 1]
     for i in range(len(idx_obj)):
-        # If the object lies inside the mask of person, merge them
         iou = IoU_mask(prediction, main_idx, idx_obj[i], thres)
         if iou > thres_merge_obj:
             prediction['masks'][main_idx, 0] = merge_masks(
@@ -174,7 +173,7 @@ def disc_shaped_kernel(ksize):
     return kernel
 
 
-def apply_blur(image, prediction, thres, degree=1/40, gamma=0.15):
+def apply_blur(image, prediction, thres, degree=1/30, gamma=0.2):
     """Synthesize image with bokeh effect.
 
     @param degree (int) [0, 1]
@@ -188,10 +187,15 @@ def apply_blur(image, prediction, thres, degree=1/40, gamma=0.15):
     mask = get_mask(prediction, thres=thres).detach().cpu().numpy()
     mask[mask > thres] = 1.0
     mask[mask < thres] = 0.0
-    mask = cv2.erode(mask, np.ones((ksize//2, ksize//2), dtype=np.uint8))
+    mask = cv2.erode(mask, np.ones((ksize//4, ksize//4), dtype=np.uint8))
     closing = cv2.morphologyEx(
         mask, cv2.MORPH_CLOSE, np.ones((ksize, ksize), dtype=np.uint8))
     mask = cv2.GaussianBlur(mask, (ksize, ksize), 0)
+    mask_dilated = cv2.dilate(mask, np.ones((ksize, ksize),
+                                            dtype=np.uint8)
+                              )
+    mask_dilated = cv2.GaussianBlur(mask_dilated, (ksize, ksize), 0)
+    mask_dilated = np.expand_dims(mask_dilated, 2)
 
     # Bokeh effect on the whole image
     kernel = disc_shaped_kernel(ksize)
@@ -203,7 +207,8 @@ def apply_blur(image, prediction, thres, degree=1/40, gamma=0.15):
     bokeh = (((bokeh / 255.0) ** gamma) * 255).astype(np.uint8)
     # Keep only pixels with high value from bokeh image
     blurred = cv2.GaussianBlur(image, (ksize, ksize), 0)
-    bokeh = cv2.max(bokeh, blurred)
+    bokeh = bokeh * (1.0 - mask_dilated)
+    bokeh = cv2.max(bokeh.astype(np.uint8), blurred)
 
     # Blend
     mask = np.expand_dims(mask, 2)
@@ -248,7 +253,7 @@ if __name__ == "__main__":
         with torch.no_grad():
             predictions = model([img.to(device)])
 
-        out = apply_blur(img_np, predictions[0], thres=0.4)
+        out = apply_blur(img_np, predictions[0], thres=0.5)
         # cv2.imshow("Image with Bokeh effect", out)
         # cv2.waitKey()
 
@@ -271,5 +276,5 @@ if __name__ == "__main__":
             with torch.no_grad():
                 predictions = model([img.to(device)])
 
-            out = apply_blur(img_np, predictions[0], thres=0.4)
+            out = apply_blur(img_np, predictions[0], thres=0.5)
             cv2.imwrite(os.path.join('output', img_name), out)
