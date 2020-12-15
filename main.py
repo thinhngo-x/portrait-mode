@@ -15,7 +15,7 @@ def parse_arg():
     """Parse arguments."""
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("--input_path", type=str,
-                        default=os.path.join('sample_images', '154.jpg'))
+                        default=os.path.join('sample_images', '259.jpg'))
     parser.add_argument("--gpu", type=bool, default=False)
     args = parser.parse_args()
     return args
@@ -149,7 +149,7 @@ def get_mask(prediction,
             max_area = area_i
             main_idx = idx_person[root]
 
-    # Merge masks of objects overlapping on persons
+    # Merge masks of objects overlapping on main persons
     idx_obj = torch.arange(num_objs)[prediction['labels'] != 1]
     for i in range(len(idx_obj)):
         iou = IoU_mask(prediction, main_idx, idx_obj[i], thres)
@@ -169,11 +169,12 @@ def disc_shaped_kernel(ksize):
     mask = x**2 + y**2 <= k**2
     kernel = np.zeros((ksize, ksize), dtype=np.float32)
     kernel[mask] = 1.0
-    kernel = kernel / np.sum(mask)
+    kernel = cv2.blur(kernel, (3, 3))
+    kernel = kernel / np.sum(kernel)
     return kernel
 
 
-def apply_blur(image, prediction, thres, degree=1/30, gamma=0.2):
+def apply_blur(image, prediction, thres, degree=1/30, gamma=0.25):
     """Synthesize image with bokeh effect.
 
     @param degree (int) [0, 1]
@@ -245,8 +246,8 @@ if __name__ == "__main__":
     if os.path.isfile(args['input_path']):
         img = Image.open(args['input_path'])
         img_np = np.array(img, dtype=np.uint8)[:, :, ::-1]
-        # cv2.imshow("Original image", img_np)
-        # cv2.waitKey()
+        cv2.imshow("Original image", img_np)
+        cv2.waitKey(0)
         img = torchvision.transforms.functional.to_tensor(img)
 
         # Predict masks
@@ -254,8 +255,9 @@ if __name__ == "__main__":
             predictions = model([img.to(device)])
 
         out = apply_blur(img_np, predictions[0], thres=0.5)
-        # cv2.imshow("Image with Bokeh effect", out)
-        # cv2.waitKey()
+        cv2.imshow("Image with Bokeh effect", out)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
         cv2.imwrite(
             os.path.join('output', os.path.split(args['input_path'])[-1]),
