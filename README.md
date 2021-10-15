@@ -1,4 +1,4 @@
-# INF573 Final Project - Synthesize Bokeh effect for portrait photos with a object-detection method
+# INF573 Final Project - Synthesize Bokeh effect for portrait photos with an object-detection method
 
 This projects aims to synthesize defocused effect for portrait images. It makes use of a Mask R-CNN model with image processing techniques.
 
