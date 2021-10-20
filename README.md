@@ -9,6 +9,9 @@ Some sample pairs of images produced by our code:
 Raw images             |  Images with bokeh effect
 :-------------------------:|:-------------------------:
 ![](elite.jpg)  |  ![](elite_out.jpg)
+![](259.jpg)  |   ![](259.jpg)
+![](portrait.jpg) |   ![](portrait_out.jpg)
+
 
 ## Prerequisites
 
