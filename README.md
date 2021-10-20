@@ -1,6 +1,14 @@
 # INF573 Final Project - Synthesize Bokeh effect for portrait photos with an object-detection method
 
+Bokeh effect is the aesthetic quality of the blur produced in out-of-focus parts of an image.
+
 This projects aims to synthesize defocused effect for portrait images. It makes use of a Mask R-CNN model with image processing techniques.
+
+Some sample pairs of images produced by our code:
+
+Raw images             |  Images with bokeh effect
+:-------------------------:|:-------------------------:
+![](elite.jpg)  |  ![](elite_out.jpg)
 
 ## Prerequisites
 
